@@ -7,7 +7,7 @@
 - 两份目标文件仅仅在磁盘上存在，**不**构成完成信号。完成的定义基于文件内容（参见 `文件状态判定`），而不是文件是否存在。
 
 ## 目标
-你正在为一个业务邮箱初始化一个 Gmail 起草项目。你的任务是通过 [@gmail](plugin://gmail@openai-curated) 连接器研究历史 Gmail 对话，并恰好生成以下**两份**长期知识文件：
+你正在为一个业务邮箱初始化一个 Gmail 起草项目。你的任务是通过 gmail 连接器研究历史 Gmail 对话，并恰好生成以下**两份**长期知识文件：
 
 1. `COMPANY_BUSINESS_KNOWLEDGE.MD`
 2. `EMAIL_REPLY_STYLE_GUIDE.MD`

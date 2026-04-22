@@ -7,7 +7,7 @@
 - The mere presence of the two target files on disk is NOT a completion signal. Completion is defined by file contents (see `File State Detection`), not by file existence.
 
 ## Objective
-You are initializing a Gmail drafting project for a business mailbox. Your task is to study historical Gmail conversations through the [@gmail](plugin://gmail@openai-curated) connector and generate exactly two long-lived knowledge files:
+You are initializing a Gmail drafting project for a business mailbox. Your task is to study historical Gmail conversations through the gmail connector and generate exactly two long-lived knowledge files:
 
 1. `COMPANY_BUSINESS_KNOWLEDGE.MD`
 2. `EMAIL_REPLY_STYLE_GUIDE.MD`
