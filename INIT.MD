@@ -2,8 +2,9 @@
 
 ## Status
 - This file is bootstrap-only.
-- Use this file exactly once to initialize the project.
-- Do not include this file in the normal day-to-day drafting workflow after initialization is complete.
+- Use this file to initialize the project, and to re-run initialization or supplementation whenever the user explicitly asks to follow `INIT.MD` again.
+- Do not include this file in the normal day-to-day drafting workflow.
+- The mere presence of the two target files on disk is NOT a completion signal. Completion is defined by file contents (see `File State Detection`), not by file existence.
 
 ## Objective
 You are initializing a Gmail drafting project for a business mailbox. Your task is to study historical Gmail conversations through the [@gmail](plugin://gmail@openai-curated) connector and generate exactly two long-lived knowledge files:
@@ -26,7 +27,34 @@ These files must become the only durable reference documents for future draft ge
 
 ## Required Inputs
 - Historical Gmail conversations available through the Gmail connector.
-- The two target files if they already exist.
+- The two target files if they already exist (they may be empty templates, partially populated, or fully populated).
+
+## File State Detection
+Before doing anything else, open both target files and classify each one into exactly one of three states. Do this classification per file, not for the pair.
+
+State A: Missing.
+- The file does not exist on disk.
+- Action: create the file with the required section order and schema, then perform a full bootstrap.
+
+State B: Template / Uninitialized.
+- The file exists, but the agent-generated portion has not been populated yet.
+- A file MUST be treated as Template if any of the following are true:
+  - Multiple agent-generated items still contain placeholder wording such as `Not initialized yet`, `None yet`, `No known unknowns recorded yet`, or `No evidence index entries yet`.
+  - Every agent-generated item has `Confidence: Low` together with empty or `None yet` source evidence.
+  - The block between `<!-- AGENT_GENERATED_START -->` and `<!-- AGENT_GENERATED_END -->` contains only boilerplate instructions and no extracted rules.
+- A Human Overrides section that contains only placeholder lines such as `No human overrides yet`, `rule 1`, `rule 2`, `...` does NOT count as populated content. It is still a template.
+- Action: treat this exactly like a fresh bootstrap. You MUST proceed to fully populate the agent-generated sections from Gmail evidence. Do not stop, do not ask for permission, and do not report the file as already initialized.
+
+State C: Populated.
+- The file exists and the agent-generated portion already contains real, evidence-backed rules with specific details, non-`Low` confidence values where justified, and concrete `Source Evidence` references.
+- Action: do NOT skip work. Still perform a complete mailbox scan as described in `Bootstrap Scope` and `Minimum Review Standard`, then run a supplementation pass:
+  - Add newly discovered durable rules that are not yet represented.
+  - Strengthen confidence or evidence on existing rules when new threads support them.
+  - Record genuinely new conflicts in `Known Unknowns`.
+  - Do not rewrite, reorder, or delete existing agent-generated rules unless new evidence clearly contradicts them; in that case, move the contested rule into `Known Unknowns` with both sides recorded.
+  - Never touch Human Overrides content regardless of state.
+
+If the two files are in different states, handle each file independently according to its own state.
 
 ## Required Outputs
 Generate or refresh exactly these two files:
@@ -207,15 +235,28 @@ Required per-item schema for agent-generated sections:
 ## Required Process
 Follow this exact order:
 
-1. Open and read the existing `COMPANY_BUSINESS_KNOWLEDGE.MD` and `EMAIL_REPLY_STYLE_GUIDE.MD` if they already exist.
-2. Preserve all human-owned sections and any clearly human-authored notes.
-3. Use the Gmail connector to shortlist high-signal Primary mailbox messages.
-4. Expand promising items into full threads and study them for durable business facts and writing patterns.
-5. Extract normalized, evidence-backed rules into the two target files.
-6. Deduplicate overlapping observations.
-7. Place unresolved or conflicting evidence in `Known Unknowns`.
-8. Update the `Evidence Index` with concise references.
-9. Verify that no content depends on `INIT.MD` for future runtime drafting.
+1. Open and read both `COMPANY_BUSINESS_KNOWLEDGE.MD` and `EMAIL_REPLY_STYLE_GUIDE.MD`.
+2. Classify each file into State A (Missing), State B (Template), or State C (Populated) using `File State Detection`. Never treat State B as completion. Do not stop work just because the files exist.
+3. Preserve all human-owned sections and any clearly human-authored notes in every state.
+4. Use the Gmail connector to shortlist high-signal Primary mailbox messages. This scan is mandatory in all three states, including State C.
+5. Expand promising items into full threads and study them for durable business facts and writing patterns.
+6. Extract normalized, evidence-backed rules.
+   - For State A and State B: fully populate the agent-generated sections, replacing template placeholders with real rules.
+   - For State C: merge newly discovered rules alongside existing ones and strengthen evidence on existing rules where supported.
+7. Deduplicate overlapping observations.
+8. Place unresolved or conflicting evidence in `Known Unknowns`.
+9. Update the `Evidence Index` with concise references.
+10. Verify that no content depends on `INIT.MD` for future runtime drafting.
+
+### Stop Conditions and Anti-Stop Rules
+- Do not stop after only reading `INIT.MD` and confirming the target files exist. That is not initialization.
+- Do not stop just because target files contain template text; template state requires a full bootstrap.
+- Do not ask the user for permission to proceed when files are in State B. Proceed automatically.
+- The only acceptable reasons to pause and report to the user before completing extraction are:
+  - The Gmail connector itself is unavailable or returns connector-level errors on every attempted call.
+  - A target file exists but cannot be read or written due to a filesystem error.
+  - You detect a clear conflict between Human Overrides and new evidence that the user must resolve.
+- Connector or infrastructure issues must be reported with the specific error, the attempted action, and what is still needed from the user. Resume automatically once the blocker is cleared.
 
 ## Quality Bar
 Before finishing, verify all of the following:
@@ -227,7 +268,16 @@ Before finishing, verify all of the following:
 - Nothing in either file depends on undocumented assumptions.
 
 ## Completion Condition
-Initialization is complete only when both target files exist in their long-lived form and can support future Gmail draft generation without requiring `INIT.MD`.
+Initialization is complete only when ALL of the following are true:
+
+- Both target files exist.
+- Neither file is in State B (Template). Every required agent-generated section contains at least one real, evidence-backed entry, or an explicit justified entry in `Known Unknowns` when the mailbox genuinely lacks signal for that section.
+- No agent-generated item still reads `Not initialized yet`, `None yet`, or other placeholder wording from the template.
+- `Source Evidence` fields point to specific Gmail threads or messages rather than `None yet`.
+- Human Overrides sections are untouched.
+- For a State C re-run, completion additionally requires that the full mailbox scan has actually been performed and that any new durable rules discovered have been merged in.
+
+If any of these conditions is not met, initialization is not complete and you must continue working.
 
 ## Post-Bootstrap Rule
 After initialization, `INIT.MD` must be ignored by the normal drafting workflow. Future draft generation should use only:
